@@ -6,7 +6,9 @@ About
 
 This software release supplements the [paper](https://arxiv.org/abs/1610.05261):
 
-    Michael Schober, Simo Särkkä, Philipp Hennig: "A probabilistic model for the numerical solution of initial value problems". 2017.
+    Michael Schober, Simo Särkkä, Philipp Hennig:
+    "A probabilistic model for the numerical solution of initial value problems", 
+    2017.
 
 The numerical implementation is provided in the Matlab programming
 environment. The probabilistic Nordsieck method is implemented in the
