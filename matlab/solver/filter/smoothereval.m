@@ -7,6 +7,8 @@ function [mt, Pt] = smoothereval (ts, tout, m, P, model)
 % Date: 2016-08-25
 % Version: 0.1
 
+error('Code is bugged. Use odeSmoother until this has been fixed');
+
 if ts(1) < tout(1)
   error('Cannot predict in the past for this model');
 end

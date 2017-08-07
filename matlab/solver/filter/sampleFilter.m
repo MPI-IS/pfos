@@ -7,6 +7,7 @@ function St = sampleFilter (ts, tout, m, P, model, num_samples)
 % Version: 0.1
 
 % TODO Implement such that smoothing distribution might be returned as well
+error('Code is bugged. Use odeSmoother until this has been fixed');
 
 if ts(1) < tout(1)
   error('Cannot sample in the past for this model');

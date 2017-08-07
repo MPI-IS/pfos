@@ -68,6 +68,18 @@ else
   alpha = 0.;
 end
 
+if isfield(options, 'gamma')
+  gamma = options.gamma;  
+else
+  gamma = 1.;  
+end
+
+if isfield(options, 'sampled')
+    sampled = options.sampled;
+else
+    sampled = false;
+end
+
 if isfield(options, 'ErrorPerUnitStep') && options.ErrorPerUnitStep
   ErrorPerUnitStep = true; 
 else
@@ -307,8 +319,7 @@ switch N
                   
     m_t(3,:) = ...
       ((Y(:,1)*(1-u)*(v - 1))/(h*u*v) + (Y(:,2)*(1-v))/(h*u*(v-u)*(1-u)) ...
-       + (Y(:,3)*(1-u))/(h*v*(v-u)*(v - 1)) + (Y(:,4)*(2-u))/(h*(1-u)) ...
-       + Y(:,4)/(h*(1-v))).';
+       + (Y(:,3)*(1-u))/(h*v*(v-u)*(v - 1)) + (Y(:,4)*(3-2*(u+v)-u*v))/(h*(u-1)*(v-1))).';
                   
     m_t(4,:) = ((2*Y(:,1)*(u + v - 2))/(h^2*u*v) ...
               + (2*Y(:,2)*(2-v))/(h^2*u*(v-u)*(1-u)) ...
@@ -405,7 +416,7 @@ if nnz(ssq) < numel(ssq)
   end
 end
 
-if true
+if false
   ssq = 9 * ones(size(ssq));
 end
 
@@ -456,9 +467,19 @@ while true
     
     m_tp = A_t * m_t;
     
+    u_tp = m_tp;
+    
+    if sampled
+        for d=1:D
+           u_tp(:,d) = m_tp(:,d) + ...
+                       semichol(A_t * P_t(:,:,d) * A_t.' ...
+                                + ssq_prev(d) * Q_1) * randn(N+1,1);
+        end
+    end
+    
     % Evaluate ODE
     odeStartTime = tic;
-    dx = odefun(tout(k) + h, m_tp(1,:).');
+    dx = odefun(tout(k) + h, u_tp(1,:).');
     stats.totalOdeTime = stats.totalOdeTime + toc(odeStartTime);
     stats.fcnCalls = stats.fcnCalls + 1;
     
@@ -471,11 +492,20 @@ while true
       exp_errs(d) = Hobs * A_t * P_t(:,:,d) * A_t.' * Hobs.';
     end
     
-    ssq_ml = max(res.^2 - alpha * exp_errs, 0.) ./ Q_1(2,2);
+    % problem: if ssq_ml = 0 P_tp eventually becomes zero and K_tp becomes
+    % NaN/Inf. Then, m_t becomes NaN and then hell is released. Is there a
+    % more principled solution to this?
+    % QUICKFIX: keep an eps of uncertainty
+    % problem: if eps > ssq_ml > 0, then D_t is way over-estimated and step
+    % size adaptation breaks down
+    % SECOND QUICKFIX: and square that exps of uncertainty
+    % The long fix would probably to make an exception check in the loop of
+    % l. 530
+    ssq_ml = gamma * max(res.^2 - alpha * exp_errs, eps^2) ./ Q_1(2,2);
     ssq    = lambda * ssq_ml + (1 - lambda) * ssq_prev;
     
     % Error control
-    E_t = sqrt(ssq * Q_1(1,1));
+    E_t = sqrt(ssq./gamma * Q_1(1,1));
     D_t = max(E_t .* ewt(m_tp(1,:).'));
     
     % Either do error control per step or per unit step
@@ -492,7 +522,6 @@ while true
       end
       h = nu * h;
       if h < h_min
-        % Replace by more robust mechanism
         warning('Had to resort to extremely small step size h=%.2e',h_min);
         h = min(h_min,tspan(end) - tout(k));
         forceStep = true;
@@ -514,12 +543,7 @@ while true
     K_tp = P_tp * Hobs.' / S_tp;
     
     m_t(:,d) = m_tp(:,d) + K_tp * res(d);
-    % update below is numerically more stable than original update
-    % P_t(:,:,d) = P_tp - K_tp * S_tp * K_tp.';
     P_t(:,:,d) = (Id - K_tp * Hobs) * P_tp;
-    
-    % it might be necessary to symmetrize sometimes
-    % P_t(:,:,d) = 0.5 * (P_t(:,:,d) + P_t(:,:,d).');
   end % for D
   
   % check whether we need to increase memory
@@ -574,7 +598,6 @@ while true
   if numfailed == 0.
     h = eta * h;
     if h < h_min
-      % Replace by more robust mechanism
       warning('Had to resort to extremely small step size h=%.2e',h_min);
       h = min(h_min,tspan(end) - tout(k));
     end

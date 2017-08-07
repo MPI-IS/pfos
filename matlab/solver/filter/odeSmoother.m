@@ -1,4 +1,4 @@
-function [ms, Ps, samples] = odeSmoother (tout, m, P, model, num_samples)
+function [ms, Ps, samples] = odeSmoother (tout, m, P, model, num_samples, ts)
 % ODESMOOTHER - RTS smoother for output from odeFilter
 
 % odeSmoother.m
@@ -6,9 +6,26 @@ function [ms, Ps, samples] = odeSmoother (tout, m, P, model, num_samples)
 % Date: 2015-04-30
 % Version: 0.1
 
-t = numel(tout) - 1;
-
 [N, D, ~] = size(m);
+ssqs = model.ssqs;
+
+% QUICK'N'DIRTY: if I want to smooth/sample at higher resolution, create
+% artificially higher resolution input
+if nargin > 5
+  [m, P] = filtereval(ts, tout, m, P, model);
+  
+  ssqs = NaN(D,numel(ts));
+  kout = 1;
+  for ks = 1:numel(ts)
+      kout = find(tout(kout:end) <= ts(ks), 1, 'last') + kout - 1;
+      ssqs(:,ks) = model.ssqs(:,kout);     
+  end
+  
+  tout = ts;
+  
+end
+
+t = numel(tout) - 1;
 
 F = diag(1:N-1,1);
 L = [zeros(N-1,1); 1/factorial(N-1)];
@@ -45,7 +62,7 @@ while t > 0
   
   for d=1:D
     m_tp = A_t * m(:,d,t);
-    P_tp = A_t * P(:,:,d,t) * A_t.' + model.ssqs(d,t) * Q_t;
+    P_tp = A_t * P(:,:,d,t) * A_t.' + ssqs(d,t) * Q_t;
     G_t  = P(:,:,d,t) * A_t.' / P_tp;
     
     if draw_samples

@@ -18,12 +18,11 @@ L = [zeros(N-1,1); 1/factorial(N-1)];
 mt = NaN([N, D, numel(ts)]);
 Pt = NaN([N, N, D, numel(ts)]);
 
-K = numel(tout);
 kout = 1;
 
 for ks = 1:numel(ts)
   
-  kout = find(tout(kout:K) <= ts(ks), 1, 'last') + kout - 1;
+  kout = find(tout(kout:end) <= ts(ks), 1, 'last') + kout - 1;
   
   if ts(ks) == tout(kout)
     

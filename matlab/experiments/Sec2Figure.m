@@ -46,7 +46,7 @@ T  = 1.5;
 tspan = [t0, T];
 h = 0.3; N = ceil((T - t0)/h);
 
-ode = @(t,y) r*y*(1 - y/K);
+ode = @(t,y) r*y.*(1 - y./K);
 
 y   = @(t) K*y0*exp(r*t) ./ (K + y0*(exp(r*t) - 1));
 dy  = @(t) K*y0*r*exp(r*t)*(K-y0) ./ (K + y0*(exp(r*t) - 1)).^2; % checked
@@ -368,8 +368,8 @@ end
 [ms, Ps] = odeSmoother(tout, mf, Pf, model);
 
 tf = t(tout(1) <= t);
-[mst, Pst]  = smoothereval(tf, tout, ms, Ps, model);
-St = sampleFilter(tf(1:4:end), tout, mf, Pf, model, num_samples);
+[mst, Pst] = odeSmoother(tout, mf, Pf, model, num_samples, tf);
+[~, ~, St] = odeSmoother(tout, mf, Pf, model, num_samples, tf(1:4:end));
 
 for d=1:3
   figure(figs{d});
